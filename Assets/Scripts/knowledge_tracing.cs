@@ -27,27 +27,20 @@ public class knowledge_tracing : MonoBehaviour
         }
 
         //PrintProbabilities();
-        string word = GetWord();
-        Debug.Log(word);
-        AddResponse(word, false);
-        PrintProbabilities();
-        AddResponse(word, true);
-        PrintProbabilities();
-        AddResponse(word, true);
-        PrintProbabilities();
-    }
-
-    void PrintProbabilities()
-    {
-        for(int i = 0; i < working_memory_ind.Count; i++)
-        {
-            float val = knowledge[i];
-            Debug.Log(words[i] + " : " + val.ToString());
-        }
+        //string word = GetWord();
+        //Debug.Log(word);
+        //AddResponse(word, false);
+        //PrintProbabilities();
+        //AddResponse(word, true);
+        //PrintProbabilities();
+        //AddResponse(word, true);
+        //PrintProbabilities();
     }
 
     void AddResponse(string word, bool is_correct)
     {
+        // Updates the knowledge model based on the outcome of a spelling question
+
         int ind = Array.IndexOf(words, word);
         if (ind == -1)
         {
@@ -73,9 +66,8 @@ public class knowledge_tracing : MonoBehaviour
 
      string GetWord()
     {
-        // Check if we're above the learned threshold for all words -> increase working memory size
-        // Get selection probabilities
-        // Select word
+        // Returns the next word to ask
+
         bool all_learned = true;
         foreach(int index in working_memory_ind)
         {
@@ -89,6 +81,7 @@ public class knowledge_tracing : MonoBehaviour
         // Extend working memory
         if( all_learned)
         {
+            Debug.Log("Adding more works to working memory!");
             int last_index = working_memory_ind[working_memory_ind.Count - 1];
             int next_index = last_index + 1;
             for( int i=0; i < num_words_to_add && i+next_index < words.Length; i++)
@@ -111,9 +104,12 @@ public class knowledge_tracing : MonoBehaviour
         return words[sel];
     }
 
-    // Update is called once per frame
-    void Update()
+    void PrintProbabilities()
     {
-        
+        for (int i = 0; i < working_memory_ind.Count; i++)
+        {
+            float val = knowledge[i];
+            Debug.Log(words[i] + " : " + val.ToString());
+        }
     }
 }
