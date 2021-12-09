@@ -73,9 +73,7 @@
 		advancedTexture.addControl(cross);
 
 		var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
-		/* also does not work bc CORS. 
-		materialPlane.diffuseTexture = new BABYLON.Texture("textures/grass.jpg", scene);
-		*/
+		materialPlane.diffuseTexture = new BABYLON.Texture("https://images.unsplash.com/photo-1589496933738-f5c27bc146e3?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8", scene);
 		materialPlane.diffuseTexture.uScale = 5.0;
 		materialPlane.diffuseTexture.vScale = 5.0;
 		materialPlane.backFaceCulling = false;
