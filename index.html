@@ -126,7 +126,7 @@ var createScene = function () {
         newLetterButton.height = 15;
         newLetterButton.color = "white";
         newLetterButton.fontSize = 450;
-        newLetterButton.textBlock.text = getRandomChar();
+        newLetterButton.textBlock.text = "a";
         aT.addControl(newLetterButton);
         return newLetterButton;
     }
@@ -264,10 +264,6 @@ var createScene = function () {
 
     return scene;
 };
-
-function getRandomChars(letter){
-    return Math.random().toString(36).substring(2,3);
-}
 
 //https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
 function shuffle(array) {
