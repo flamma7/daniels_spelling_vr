@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+        <title>Nadivfolio Cube</title>
+
+        <!-- Babylon.js -->
+        <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+        <script src="https://preview.babylonjs.com/ammo.js"></script>
+        <script src="https://preview.babylonjs.com/cannon.js"></script>
+        <script src="https://preview.babylonjs.com/Oimo.js"></script>
+        <script src="https://preview.babylonjs.com/libktx.js"></script>
+        <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+        <script src="https://preview.babylonjs.com/babylon.js"></script>
+        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+        var canvas = document.getElementById("renderCanvas");
+
+        var engine = null;
+        var scene = null;
+        var sceneToRender = null;
+        var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }); };
+
+var createScene = function () { 
+    // Made by Nadiv
+
+    const words = shuffle(wordsList);
+    var wordIndex = 0;
+    var letterIndex = 0;
+
+    var scene = new BABYLON.Scene(engine);
+	var camera = new BABYLON.FreeCamera("FreeCamera", new BABYLON.Vector3(0, 1, -1), scene);
+    camera.setTarget(new BABYLON.Vector3(0,1,0));
+    camera.attachControl(canvas);
+    camera.fov = 1;
+    var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, -0.8), scene);
+    light.intensity = 1;
+
+    // crosshair
+    const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");   
+    const cross = new BABYLON.GUI.TextBlock();
+    cross.text = "+";
+    cross.color = "black";
+    cross.fontSize = 32
+    advancedTexture.addControl(cross);
+
+    var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
+    materialPlane.diffuseTexture = new BABYLON.Texture("textures/grass.jpg", scene);
+    materialPlane.diffuseTexture.uScale = 5.0;
+    materialPlane.diffuseTexture.vScale = 5.0;
+    materialPlane.backFaceCulling = false;
+
+    var wrongMaterial = new BABYLON.StandardMaterial("wrongMaterial", scene);
+    wrongMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
+    
+    var correctMaterial = new BABYLON.StandardMaterial("correctMaterial", scene);
+    correctMaterial.diffuseColor = new BABYLON.Color3(0, 1, 0);
+
+    var defaultMat = new BABYLON.StandardMaterial("defaultMat", scene);
+
+    var ground = BABYLON.Mesh.CreateGround("ground1", 50, 50, 10, scene);
+    ground.material = materialPlane;
+
+    // Skybox
+	var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
+	var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+	skyboxMaterial.backFaceCulling = false;
+	skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox", scene);
+	skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+	skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+	skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+	skybox.material = skyboxMaterial;	
+
+    const imagePlane =  BABYLON.MeshBuilder.CreatePlane("imagePlane", {height:2, width: 2});
+    imagePlane.position.y = 2.5;
+    imagePlane.position.z = 3;
+
+    function createLetterObject(name, x, y , z){
+        var newLetterObj = BABYLON.Mesh.CreateSphere(name, 16, 2, scene);
+        newLetterObj.position.y = y;
+        newLetterObj.position.x = x;
+        newLetterObj.position.z = z;
+        newLetterObj.material = defaultMat;
+        return newLetterObj;
+    }
+
+    function createLetterText(name, x, parent){  
+        var newLetterText = BABYLON.Mesh.CreatePlane(name, 2);
+        newLetterText.parent = parent;
+        newLetterText.position.z = -1;
+        newLetterText.position.x = x;
+        return newLetterText;
+    }
+
+    function createLetterButton(name, aT){
+        var newLetterButton = BABYLON.GUI.Button.CreateSimpleButton(name, "");
+        newLetterButton.width = 20;
+        newLetterButton.height = 15;
+        newLetterButton.color = "white";
+        newLetterButton.fontSize = 450;
+        newLetterButton.textBlock.text = getRandomChar();
+        aT.addControl(newLetterButton);
+        return newLetterButton;
+    }
+
+    var rightLetterObj = createLetterObject("rightLetterObj", -3, 1, 15);
+    var rightLetterText = createLetterText("rightLetterText", 0.15, rightLetterObj);
+    var advancedTextureRight = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(rightLetterText);
+    var rightLetterButton = createLetterButton("rightLetterButton", advancedTextureRight);
+
+    var midLetterObj = createLetterObject("midLetterObj", 0,1,15);
+    var midLetterText = createLetterText("midLetterText", 0, midLetterObj);
+    var advancedTextureMid = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(midLetterText);
+    var midLetterButton = createLetterButton("midLetterButton", advancedTextureMid);
+
+    var leftLetterObj = createLetterObject("leftLetterObj", 3, 1, 15);
+    var leftLetterText = createLetterText("leftLetterText", -0.15, leftLetterObj);
+    var advancedTextureLeft = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(leftLetterText);
+    var leftLetterButton = createLetterButton("leftLetterButton", advancedTextureLeft);
+
+    var text1 = new BABYLON.GUI.TextBlock();
+    text1.text = "";
+    text1.color = "white";
+    text1.top = -200;
+    advancedTexture.addControl(text1);
+
+    var canSelect = true;
+	var isLocked = false;
+    var correct = false;
+
+    function handleSelection(letterButton, letterObj, word){
+        text1.text[letterIndex] = letterButton.textBlock.text;
+        correct = letterButton.textBlock.text == word[letterIndex] 
+        console.log(word, letterIndex, correct);
+        if(correct){
+            letterObj.material = correctMaterial;
+        } else {
+            letterObj.material = wrongMaterial;
+        }
+        canSelect = false;
+        setTimeout(() => {
+            canSelect = true;
+            if(correct){
+                if(letterIndex < word.length){
+                    letterIndex++;
+                    let letters = genThreeChars(word.word, letterIndex);
+                    leftLetterButton.textBlock.text = letters[0];
+                    midLetterButton.textBlock.text = letters[1];
+                    rightLetterButton.textBlock.text = letters[2];
+                } else {
+                    if(wordIndex < words.length){
+                        wordIndex++;
+                        initWord(words[wordIndex]);
+                    }
+                }
+            } else {
+                if(wordIndex < words.length){
+                    wordIndex++;
+                    initWord(words[wordIndex]);
+                }
+            }
+            correct = false;
+            letterObj.material = defaultMat;
+        }, 500)
+    }
+
+    function initWord(word){
+        var wordMaterial = new BABYLON.StandardMaterial("wordMat", scene);
+        wordMaterial.diffuseTexture = new BABYLON.Texture(word.imageURL, scene);
+        wordMaterial.diffuseTexture.uScale = 1;
+        wordMaterial.diffuseTexture.vScale = 1;
+        wordMaterial.backFaceCulling = false;
+        imagePlane.material = wordMaterial;
+
+        let letters = genThreeChars(word.word, 0);
+        leftLetterButton.textBlock.text = letters[0];
+        midLetterButton.textBlock.text = letters[1];
+        rightLetterButton.textBlock.text = letters[2];
+
+        letterIndex = 0;
+        text1.text = [...word.word].map(x => "_").join("");
+    }
+
+    initWord(words[wordIndex]);
+
+    // Triggers on mouse pointer down
+    var onPointerDown = function (evt, pr) {
+        if (!isLocked) { // Engages pointer lock
+			canvas.requestPointerLock = canvas.requestPointerLock || canvas.msRequestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock || false;
+			if (canvas.requestPointerLock) {
+				canvas.requestPointerLock();
+		    }
+		}
+        // returns when left mouse button is not pressed
+		if (evt.button !== 0) {
+			return;
+		}
+
+        // Otherwise we cast a ray from the center of the screen
+        var width = scene.getEngine().getRenderWidth();
+        var height = scene.getEngine().getRenderHeight();
+        var pickInfo = scene.pick(width / 2, height / 2);
+
+        // Logic that determines what happens when the sphere is clicked
+        // console.log(pickInfo.pickedMesh.name)
+        if(!canSelect) return;
+        if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "rightLetterObj" || pickInfo.pickedMesh.name == "rightLetterText") {
+            handleSelection(rightLetterButton, rightLetterObj, words[wordIndex].word);
+        }
+        if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "midLetterObj" || pickInfo.pickedMesh.name == "midLetterText") {
+            handleSelection(midLetterButton, midLetterObj, words[wordIndex].word);
+            // text1.text += midLetterButton.textBlock.text;
+            // midLetterObj.material = wrongMaterial;
+            // canSelect = false;
+            // setTimeout(() => {
+            //     canSelect = true;
+            //     midLetterButton.textBlock.text = getRandomChar();
+            //     midLetterObj.material = defaultMat;
+            // }, 500)
+        }
+        if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "leftLetterObj" || pickInfo.pickedMesh.name == "leftLetterText") {
+           handleSelection(leftLetterButton, leftLetterObj, words[wordIndex].word);
+            // text1.text += leftLetterButton.textBlock.text;
+            // leftLetterObj.material = correctMaterial;
+            // canSelect = false;
+            // setTimeout(() => {
+            //     canSelect = true;``
+            //     leftLetterButton.textBlock.text = getRandomChar();
+            //     leftLetterObj.material = defaultMat;
+            // }, 500)
+        }
+	}  
+    
+    var canvas = engine.getRenderingCanvas();
+    canvas.addEventListener("pointerdown", onPointerDown, false);
+
+    return scene;
+};
+
+function getRandomChars(letter){
+    return Math.random().toString(36).substring(2,3);
+}
+
+//https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+function shuffle(array) {
+  let currentIndex = array.length,  randomIndex;
+  while (currentIndex != 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
+function genThreeChars(word, letterIndex){
+    const alphabet = "abcdefghijklmnopqrstuvwxyz"
+    let options = [];
+    options.push(word[letterIndex]);
+    while(options.length < 3){
+        const ran = alphabet[Math.floor(Math.random() * alphabet.length)] 
+        if(!options.includes(ran))
+            options.push(ran)
+    }
+    return shuffle(options);
+}
+
+var wordsList = [
+    {word: 'air', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/air.jpg', sound: 'url'},
+    {word: 'day', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/day.jpg', sound: 'url'},
+    {word: 'down', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/down.png', sound: 'url'},
+    {word: 'find', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/find.png', sound: 'url'},
+    {word: 'first', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/first.png', sound: 'url'},
+    {word: 'long', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/long.jpg', sound: 'url'},
+    {word: 'look', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/look.png', sound: 'url'},
+    {word: 'make', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/make.png', sound: 'url'},
+    {word: 'number', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/number.jpg', sound: 'url'},
+    {word: 'one', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/one.jpg', sound: 'url'},
+    {word: 'party', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/party.jpg', sound: 'url'},
+    {word: 'people', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/people.jpg', sound: 'url'},
+    {word: 'see', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/see.jpg', sound: 'url'},
+    {word: 'two', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/two.png', sound: 'url'},
+    {word: 'up', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/up.jpg', sound: 'url'},
+    {word: 'water', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/water.jpg', sound: 'url'},
+    {word: 'way', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/way.jpg', sound: 'url'},
+    {word: 'words', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/words.jpg', sound: 'url'},
+    {word: 'work', imageURL: 'https://github.com/flamma7/daniels_spelling_vr/blob/master/Assets/Images/work.jpg?raw=true', sound: 'url'}
+]
+var engine;
+try {
+    engine = createDefaultEngine();
+} catch(e) {
+    console.log("the available createEngine function failed. Creating the default engine instead");
+    engine = createDefaultEngine();
+}
+        if (!engine) throw 'engine should not be null.';
+        scene = createScene();;
+        sceneToRender = scene
+
+        engine.runRenderLoop(function () {
+            if (sceneToRender) {
+                sceneToRender.render();
+            }
+        });
+
+        // Resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>
