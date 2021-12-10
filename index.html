@@ -88,24 +88,12 @@
 
         var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
         materialPlane.diffuseTexture = new BABYLON.Texture(
-          "https://images.unsplash.com/photo-1589496933738-f5c27bc146e3?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8",
+          "https://previews.123rf.com/images/subbotina/subbotina1004/subbotina100400070/7337380-sand-texture.jpg",
           scene
         );
         materialPlane.diffuseTexture.uScale = 5.0;
         materialPlane.diffuseTexture.vScale = 5.0;
         materialPlane.backFaceCulling = false;
-
-        var wrongMaterial = new BABYLON.StandardMaterial(
-          "wrongMaterial",
-          scene
-        );
-        wrongMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
-
-        var correctMaterial = new BABYLON.StandardMaterial(
-          "correctMaterial",
-          scene
-        );
-        correctMaterial.diffuseColor = new BABYLON.Color3(0, 1, 0);
 
         var defaultMat = new BABYLON.StandardMaterial("defaultMat", scene);
 
@@ -140,16 +128,20 @@
           newLetterObj.scaling.x = scaleFactor;
           newLetterObj.scaling.y = scaleFactor;
           newLetterObj.scaling.z = scaleFactor;
-          newLetterObj.rotation.y = Math.PI / 2;
+          newLetterObj.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            Math.PI / 2,
+            BABYLON.Space.LOCAL
+          );
           newLetterObj.material = defaultMat;
           // return newLetterObj;
         }
 
-        function createLetterText(name, x, parent) {
+        function createLetterText(name, x, y, z) {
           var newLetterText = BABYLON.Mesh.CreatePlane(name, 2);
-          newLetterText.parent = parent;
-          newLetterText.position.z = -1;
           newLetterText.position.x = x;
+          newLetterText.position.y = y;
+          newLetterText.position.z = z;
           return newLetterText;
         }
 
@@ -172,11 +164,12 @@
           scene
         );
         rightLetterObj = rightLetterObj.meshes[0];
-        createLetterObject(rightLetterObj, -3, 1, 15);
+        createLetterObject(rightLetterObj, -3, 1.5, 15);
         var rightLetterText = createLetterText(
           "rightLetterText",
-          0.15,
-          rightLetterObj
+          -2.25,
+          1.5,
+          10
         );
         var advancedTextureRight =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(rightLetterText);
@@ -192,8 +185,8 @@
           scene
         );
         midLetterObj = midLetterObj.meshes[0];
-        createLetterObject(midLetterObj, 0, 1, 15);
-        var midLetterText = createLetterText("midLetterText", 0, midLetterObj);
+        createLetterObject(midLetterObj, 0, 1.5, 15);
+        var midLetterText = createLetterText("midLetterText", 0, 1.5, 10);
         var advancedTextureMid =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(midLetterText);
         var midLetterButton = createLetterButton(
@@ -208,12 +201,8 @@
           scene
         );
         leftLetterObj = leftLetterObj.meshes[0];
-        createLetterObject(leftLetterObj, 3, 1, 15);
-        var leftLetterText = createLetterText(
-          "leftLetterText",
-          -0.15,
-          leftLetterObj
-        );
+        createLetterObject(leftLetterObj, 3, 1.5, 15);
+        var leftLetterText = createLetterText("leftLetterText", 2.25, 1.5, 10);
         var advancedTextureLeft =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(leftLetterText);
         var leftLetterButton = createLetterButton(
@@ -237,9 +226,9 @@
           correct = letterButton.textBlock.text == word[letterIndex];
           console.log(word, letterIndex, correct);
           if (correct) {
-            letterObj.material = correctMaterial;
+            letterButton.color = "green";
           } else {
-            letterObj.material = wrongMaterial;
+            letterButton.color = "red";
           }
           canSelect = false;
           setTimeout(() => {
@@ -264,7 +253,7 @@
               }
             }
             correct = false;
-            letterObj.material = defaultMat;
+            letterButton.color = "white";
           }, 500);
         }
 
@@ -385,7 +374,7 @@
       function genThreeChars(word, letterIndex) {
         const alphabet = "abcdefghijklmnopqrstuvwxyz";
         let options = [];
-        options.push(word[letterIndex]);
+        options.push(word[0]);
         while (options.length < 3) {
           const ran = alphabet[Math.floor(Math.random() * alphabet.length)];
           if (!options.includes(ran)) options.push(ran);
