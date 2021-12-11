@@ -52,6 +52,8 @@
 	var createScene = async function () { 
 		// Made by Nadiv
 
+        var is_xr = true; // is_xr = false when debugging in 2D; is_xr = true for VR
+
 		const words = shuffle(wordsList);
 		var wordIndex = 0;
 		var letterIndex = 0;
@@ -65,12 +67,16 @@
 		light.intensity = 1;
 
 		// crosshair
-		const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");   
-		const cross = new BABYLON.GUI.TextBlock();
-		cross.text = "+";
-		cross.color = "black";
-		cross.fontSize = 32
-		advancedTexture.addControl(cross);
+		const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI"); 
+        if( !is_xr)
+        {
+            const cross = new BABYLON.GUI.TextBlock();
+            cross.text = "+";
+            cross.color = "black";
+            cross.fontSize = 32
+            advancedTexture.addControl(cross);
+        }  
+		
 
 		var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
 		materialPlane.diffuseTexture = new BABYLON.Texture("https://images.unsplash.com/photo-1589496933738-f5c27bc146e3?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8", scene);
@@ -150,8 +156,12 @@
 
 		var text1 = new BABYLON.GUI.TextBlock();
 		text1.text = "";
-		text1.color = "white";
-		text1.top = -200;
+		text1.color = "red";
+        text1.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+        text1.fontSize = "120"
+		//text1.top = -200;
+        //imagePlane.position.y = 2.5;
+		//imagePlane.position.z = 3;
 		advancedTexture.addControl(text1);
 
 		var canSelect = true;
@@ -159,7 +169,6 @@
 		var correct = false;
 
 		function handleSelection(letterButton, letterObj, word){
-			text1.text[letterIndex] = letterButton.textBlock.text;
 			correct = letterButton.textBlock.text == word[letterIndex] 
 			console.log(word, letterIndex, correct);
 			if(correct){
@@ -171,23 +180,24 @@
 			setTimeout(() => {
 				canSelect = true;
 				if(correct){
-					if(letterIndex < word.length){
+					if(letterIndex + 1 < word.length){
 						letterIndex++;
-						let letters = genThreeChars(word.word, letterIndex);
+                        //console.log("Updating index");
+                        text1.text += letterButton.textBlock.text;
+						let letters = genThreeChars(word, letterIndex);
 						leftLetterButton.textBlock.text = letters[0];
 						midLetterButton.textBlock.text = letters[1];
 						rightLetterButton.textBlock.text = letters[2];
 					} else {
-						if(wordIndex < words.length){
-							wordIndex++;
-							initWord(words[wordIndex]);
-						}
-					}
-				} else {
-					if(wordIndex < words.length){
-						wordIndex++;
+                        console.log("Updating word");
+                        wordIndex++;
 						initWord(words[wordIndex]);
 					}
+				} else {
+                    let letters = genThreeChars(word, letterIndex);
+                    leftLetterButton.textBlock.text = letters[0];
+                    midLetterButton.textBlock.text = letters[1];
+                    rightLetterButton.textBlock.text = letters[2];
 				}
 				correct = false;
 				letterObj.material = defaultMat;
@@ -208,56 +218,120 @@
 			rightLetterButton.textBlock.text = letters[2];
 
 			letterIndex = 0;
-			text1.text = [...word.word].map(x => "_").join("");
+            //console.log(word.word);
+			text1.text = ""; //[...word.word].map(x => "_").join("");
+            //console.log(text1.text);
 		}
 
 		initWord(words[wordIndex]);
 
 		// Triggers on mouse pointer down
-		var onPointerDown = function (evt, pr) {
-			if (!isLocked) { // Engages pointer lock
-				canvas.requestPointerLock = canvas.requestPointerLock || canvas.msRequestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock || false;
-				if (canvas.requestPointerLock) {
-					canvas.requestPointerLock();
-				}
-			}
-			// returns when left mouse button is not pressed
-			if (evt.button !== 0) {
-				return;
-			}
+        if( !is_xr)
+        {
+            var onPointerDown = function (evt, pr) {
+                if (!isLocked) { // Engages pointer lock
+                    canvas.requestPointerLock = canvas.requestPointerLock || canvas.msRequestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock || false;
+                    if (canvas.requestPointerLock) {
+                        canvas.requestPointerLock();
+                    }
+                }
+                // returns when left mouse button is not pressed
+                if (evt.button !== 0) {
+                    return;
+                }
 
-			// Otherwise we cast a ray from the center of the screen
-			var width = scene.getEngine().getRenderWidth();
-			var height = scene.getEngine().getRenderHeight();
-			var pickInfo = scene.pick(width / 2, height / 2);
+                // Otherwise we cast a ray from the center of the screen
+                var width = scene.getEngine().getRenderWidth();
+                var height = scene.getEngine().getRenderHeight();
+                var pickInfo = scene.pick(width / 2, height / 2);
 
-			// Logic that determines what happens when the sphere is clicked
-			// console.log(pickInfo.pickedMesh.name)
-			if(!canSelect) return;
-			if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "rightLetterObj" || pickInfo.pickedMesh.name == "rightLetterText") {
-				handleSelection(rightLetterButton, rightLetterObj, words[wordIndex].word);
-			}
-			if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "midLetterObj" || pickInfo.pickedMesh.name == "midLetterText") {
-				handleSelection(midLetterButton, midLetterObj, words[wordIndex].word);
-			}
-			if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "leftLetterObj" || pickInfo.pickedMesh.name == "leftLetterText") {
-			   handleSelection(leftLetterButton, leftLetterObj, words[wordIndex].word);
-			}
-		}  
+                // Logic that determines what happens when the sphere is clicked
+                // console.log(pickInfo.pickedMesh.name)
+                if(!canSelect) return;
+                if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "rightLetterObj" || pickInfo.pickedMesh.name == "rightLetterText") {
+                    handleSelection(rightLetterButton, rightLetterObj, words[wordIndex].word);
+                }
+                if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "midLetterObj" || pickInfo.pickedMesh.name == "midLetterText") {
+                    handleSelection(midLetterButton, midLetterObj, words[wordIndex].word);
+                }
+                if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "leftLetterObj" || pickInfo.pickedMesh.name == "leftLetterText") {
+                handleSelection(leftLetterButton, leftLetterObj, words[wordIndex].word);
+                }
+            }  
+        }
 		
 		var canvas = engine.getRenderingCanvas();
-		canvas.addEventListener("pointerdown", onPointerDown, false);
+        if(!is_xr)
+        {
+            canvas.addEventListener("pointerdown", onPointerDown, false);
+        }
+		
+        if( is_xr )
+        {
+            const env = scene.createDefaultEnvironment();
+            const xr = await scene.createDefaultXRExperienceAsync({
+                floorMeshes: [env.ground]
+            });
 
-		const env = scene.createDefaultEnvironment();
-
-		const xr = await scene.createDefaultXRExperienceAsync({
-			floorMeshes: [env.ground]
-		});
+            xr.input.onControllerAddedObservable.add((controller) => {
+        controller.onMotionControllerInitObservable.add((motionController) => {
+            if (motionController.handness === 'left') {
+                    const xr_ids = motionController.getComponentIds();
+                    let triggerComponent = motionController.getComponent(xr_ids[0]);//xr-standard-trigger
+                    triggerComponent.onButtonStateChangedObservable.add(() => {
+                        if (triggerComponent.pressed) {
+                            //Box_Left_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                            handleSelection(rightLetterButton, rightLetterObj, words[wordIndex].word);
+                            
+                        }else{
+                            //Box_Left_Trigger.scaling= new BABYLON.Vector3(1,1,1);
+                        
+                        }
+                    });
+                    let xbuttonComponent = motionController.getComponent(xr_ids[3]);//x-button
+                    xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                        if (xbuttonComponent.pressed) {
+                            handleSelection(midLetterButton, midLetterButton, words[wordIndex].word);
+                            //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                        
+                        }else{
+                            //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);  
+                        }
+                    });
+            }
+            if (motionController.handness === 'right') {
+                    const xr_ids = motionController.getComponentIds();
+                    let triggerComponent = motionController.getComponent(xr_ids[0]);//xr-standard-trigger
+                    triggerComponent.onButtonStateChangedObservable.add(() => {
+                        if (triggerComponent.pressed) {
+                            handleSelection(leftLetterButton, leftLetterObj, words[wordIndex].word);
+                            //Box_Right_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                        
+                        }else{
+                            //Box_Right_Trigger.scaling= new BABYLON.Vector3(1,1,1);
+                        
+                        }
+                    });
+                    let xbuttonComponent = motionController.getComponent(xr_ids[3]);//x-button
+                    xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                        if (xbuttonComponent.pressed) {
+                            handleSelection(midLetterButton, midLetterButton, words[wordIndex].word);
+                            //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                        
+                        }else{
+                            //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);  
+                        }
+                    });
+            }
+        })
+            });
+        }
+		
 
 		return scene;
 	};
 
-	//https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+    //https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
 	function shuffle(array) {
 	  let currentIndex = array.length,  randomIndex;
 	  while (currentIndex != 0) {
@@ -299,8 +373,8 @@
 		{word: 'up', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/up.jpg', sound: 'url'},
 		{word: 'water', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/water.jpg', sound: 'url'},
 		{word: 'way', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/way.jpg', sound: 'url'},
-		{word: 'words', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/words.jpg', sound: 'url'},
-		{word: 'work', imageURL: 'https://github.com/flamma7/daniels_spelling_vr/blob/master/Assets/Images/work.jpg', sound: 'url'}
+		{word: 'words', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/words.jpg', sound: 'url'}
+		//{word: 'work', imageURL: 'https://github.com/flamma7/daniels_spelling_vr/blob/master/Assets/Images/work.jpg', sound: 'url'}
 	];
 	
 	var engine;
