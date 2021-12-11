@@ -1,403 +1,779 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-        <title>VR Final Spelling Game</title>
+    <title>Final</title>
 
-        <!-- Babylon.js -->
-        <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
-        <script src="https://preview.babylonjs.com/ammo.js"></script>
-        <script src="https://preview.babylonjs.com/cannon.js"></script>
-        <script src="https://preview.babylonjs.com/Oimo.js"></script>
-        <script src="https://preview.babylonjs.com/libktx.js"></script>
-        <script src="https://preview.babylonjs.com/earcut.min.js"></script>
-        <script src="https://preview.babylonjs.com/babylon.js"></script>
-        <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
-        <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
-        <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
-        <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
-        <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
-        <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
-        <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <!-- Babylon.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <script src="https://preview.babylonjs.com/ammo.js"></script>
+    <script src="https://preview.babylonjs.com/cannon.js"></script>
+    <script src="https://preview.babylonjs.com/Oimo.js"></script>
+    <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
 
+    <style>
+      html,
+      body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
 
-        <style>
-            html, body {
-                overflow: hidden;
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
+      #renderCanvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+    </style>
+  </head>
 
-            #renderCanvas {
-                width: 100%;
-                height: 100%;
-                touch-action: none;
-            }
-        </style>
-    </head>
-<body>
+  <body>
     <canvas id="renderCanvas"></canvas>
     <script>
-        var canvas = document.getElementById("renderCanvas");
+      var canvas = document.getElementById("renderCanvas");
+      const is_xr = window.confirm(
+        "Play in VR?\n\nOK: use headset and controller buttons to select letter\n\nCancel: use mouse to click on blocks"
+      ); // is_xr = false when debugging in 2D; is_xr = true for VR
+      var engine = null;
+      var scene = null;
+      var sceneToRender = null;
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
+        });
+      };
+      var createScene = async function () {
+        const words = shuffle(wordsList);
+        var wordIndex = 0;
+        var letterIndex = 0;
 
-        var engine = null;
-        var scene = null;
-        var sceneToRender = null;
-        var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }); };
+        var scene = new BABYLON.Scene(engine);
+        var camera = new BABYLON.FreeCamera(
+          "FreeCamera",
+          new BABYLON.Vector3(0, 1, -1),
+          scene
+        );
+        camera.setTarget(new BABYLON.Vector3(0, 1, 0));
+        camera.attachControl(canvas);
+        camera.fov = 1;
+        var light = new BABYLON.HemisphericLight(
+          "light1",
+          new BABYLON.Vector3(0, 1, -0.8),
+          scene
+        );
+        light.intensity = 1;
 
-	var createScene = async function () { 
-		// Made by Nadiv
+        // crosshair
+        const advancedTexture =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+        if (!is_xr) {
+          const cross = new BABYLON.GUI.TextBlock();
+          cross.text = "+";
+          cross.color = "black";
+          cross.fontSize = 32;
+          advancedTexture.addControl(cross);
+        }
 
-        var is_xr = true; // is_xr = false when debugging in 2D; is_xr = true for VR
+        var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
+        materialPlane.diffuseTexture = new BABYLON.Texture(
+          "https://i.imgur.com/VCair7W.jpg",
+          scene
+        );
+        materialPlane.diffuseTexture.uScale = 28.0;
+        materialPlane.diffuseTexture.vScale = 28.0;
 
-		const words = shuffle(wordsList);
-		var wordIndex = 0;
-		var letterIndex = 0;
+        var defaultMat = new BABYLON.StandardMaterial("defaultMat", scene);
 
-		var scene = new BABYLON.Scene(engine);
-		var camera = new BABYLON.FreeCamera("FreeCamera", new BABYLON.Vector3(0, 1, -1), scene);
-		camera.setTarget(new BABYLON.Vector3(0,1,0));
-		camera.attachControl(canvas);
-		camera.fov = 1;
-		var light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, -0.8), scene);
-		light.intensity = 1;
+        var ground = BABYLON.MeshBuilder.CreateGround(
+          "ground",
+          { width: 400, height: 400 },
+          scene
+        );
+        ground.material = new BABYLON.StandardMaterial("mat", scene);
+        ground.material = materialPlane;
 
-		// crosshair
-		const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI"); 
-        if( !is_xr)
-        {
-            const cross = new BABYLON.GUI.TextBlock();
-            cross.text = "+";
-            cross.color = "black";
-            cross.fontSize = 32
-            advancedTexture.addControl(cross);
-        }  
-		
+        const imagePlane = BABYLON.MeshBuilder.CreatePlane("imagePlane", {
+          height: 10,
+          width: 10,
+        });
+        imagePlane.position.y = 8;
+        imagePlane.position.z = 15;
 
-		var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
-		materialPlane.diffuseTexture = new BABYLON.Texture("https://images.unsplash.com/photo-1589496933738-f5c27bc146e3?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8", scene);
-		materialPlane.diffuseTexture.uScale = 5.0;
-		materialPlane.diffuseTexture.vScale = 5.0;
-		materialPlane.backFaceCulling = false;
+        function createLetterObject(newLetterObj, x, y, z) {
+          // var newLetterObj = BABYLON.Mesh.CreateSphere(name, 16, 2, scene);
+          const scaleFactor = 5;
+          newLetterObj.position.y = y;
+          newLetterObj.position.x = x;
+          newLetterObj.position.z = z;
+          newLetterObj.scaling.x = scaleFactor;
+          newLetterObj.scaling.y = scaleFactor;
+          newLetterObj.scaling.z = scaleFactor;
+          newLetterObj.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            Math.PI / 2,
+            BABYLON.Space.LOCAL
+          );
+          newLetterObj.material = defaultMat;
+          // return newLetterObj;
+        }
 
-		var wrongMaterial = new BABYLON.StandardMaterial("wrongMaterial", scene);
-		wrongMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
-		
-		var correctMaterial = new BABYLON.StandardMaterial("correctMaterial", scene);
-		correctMaterial.diffuseColor = new BABYLON.Color3(0, 1, 0);
+        function createLetterText(name, x, y, z) {
+          var newLetterText = BABYLON.Mesh.CreatePlane(name, 2);
+          newLetterText.position.x = x;
+          newLetterText.position.y = y;
+          newLetterText.position.z = z;
+          return newLetterText;
+        }
 
-		var defaultMat = new BABYLON.StandardMaterial("defaultMat", scene);
+        function createEnteredText(name, x, y, z, height = 2, width = 2) {
+          var newLetterText = BABYLON.MeshBuilder.CreatePlane(name, {
+            height: height,
+            width: width,
+            updatable: true,
+          });
+          newLetterText.position.x = x;
+          newLetterText.position.y = y;
+          newLetterText.position.z = z;
+          return newLetterText;
+        }
 
-		var ground = BABYLON.Mesh.CreateGround("ground1", 50, 50, 10, scene);
-		ground.material = materialPlane;
+        function createLetterButton(
+          name,
+          aT,
+          width = 30,
+          height = 15,
+          fontsize = 650
+        ) {
+          var newLetterButton = BABYLON.GUI.Button.CreateSimpleButton(name, "");
+          newLetterButton.width = width;
+          newLetterButton.height = height;
+          newLetterButton.color = "white";
+          newLetterButton.fontSize = fontsize;
+          newLetterButton.textBlock.text = "a";
+          newLetterButton.textBlock.resizeToFit = true;
+          aT.addControl(newLetterButton);
+          return newLetterButton;
+        }
+        engine.displayLoadingUI();
+        console.log("loading rightLetter");
+        var rightLetterObj = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "letterslab.glb",
+          scene
+        );
+        rightLetterObj = rightLetterObj.meshes[0];
+        createLetterObject(rightLetterObj, -3, 1.5, 15);
+        var rightLetterText = createLetterText(
+          "rightLetterText",
+          -3.15,
+          1.5,
+          14.5
+        );
+        var advancedTextureRight =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(rightLetterText);
+        var rightLetterButton = createLetterButton(
+          "rightLetterButton",
+          advancedTextureRight
+        );
+        console.log("loading midLetter");
+        var midLetterObj = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "letterslab.glb",
+          scene
+        );
+        midLetterObj = midLetterObj.meshes[0];
+        createLetterObject(midLetterObj, 0, 1.5, 15);
+        var midLetterText = createLetterText("midLetterText", 0, 1.5, 14.5);
+        var advancedTextureMid =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(midLetterText);
+        var midLetterButton = createLetterButton(
+          "midLetterButton",
+          advancedTextureMid
+        );
+        console.log("loading leftLetter");
+        var leftLetterObj = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "letterslab.glb",
+          scene
+        );
+        leftLetterObj = leftLetterObj.meshes[0];
+        createLetterObject(leftLetterObj, 3, 1.5, 15);
+        var leftLetterText = createLetterText(
+          "leftLetterText",
+          3.15,
+          1.5,
+          14.5
+        );
+        var advancedTextureLeft =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(leftLetterText);
+        var leftLetterButton = createLetterButton(
+          "leftLetterButton",
+          advancedTextureLeft
+        );
 
-		// Skybox
-		/* does not work bc CORS is a bitch
-		var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
-		var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
-		skyboxMaterial.backFaceCulling = false;
-		skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox", scene);
-		skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-		skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-		skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-		skybox.material = skyboxMaterial;
-		*/
+        function scaleAndMove(
+          object,
+          scaleX,
+          scaleY,
+          scaleZ,
+          posX,
+          posY,
+          posZ,
+          rotation
+        ) {
+          object.scaling.x = scaleX;
+          object.scaling.y = scaleY;
+          object.scaling.z = scaleZ;
+          object.position.x = posX;
+          object.position.y = posY;
+          object.position.z = posZ;
+          object.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            rotation,
+            BABYLON.Space.LOCAL
+          );
+        }
 
-		const imagePlane =  BABYLON.MeshBuilder.CreatePlane("imagePlane", {height:2, width: 2});
-		imagePlane.position.y = 2.5;
-		imagePlane.position.z = 3;
+        //left side closer
+        var palmTrees = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees.meshes[0], 0.01, 0.01, 0.01, -65, 0, 45, 0);
 
-		function createLetterObject(name, x, y , z){
-			var newLetterObj = BABYLON.Mesh.CreateSphere(name, 16, 2, scene);
-			newLetterObj.position.y = y;
-			newLetterObj.position.x = x;
-			newLetterObj.position.z = z;
-			newLetterObj.material = defaultMat;
-			return newLetterObj;
-		}
+        // left side further
+        var palmTrees2 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees2.meshes[0], 0.01, 0.01, 0.01, -40, 0, 45, 0);
 
-		function createLetterText(name, x, parent){  
-			var newLetterText = BABYLON.Mesh.CreatePlane(name, 2);
-			newLetterText.parent = parent;
-			newLetterText.position.z = -1;
-			newLetterText.position.x = x;
-			return newLetterText;
-		}
+        //right side closer
+        var palmTrees3 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees3.meshes[0], 0.01, 0.01, 0.01, -65, 0, -45, 0);
 
-		function createLetterButton(name, aT){
-			var newLetterButton = BABYLON.GUI.Button.CreateSimpleButton(name, "");
-			newLetterButton.width = 20;
-			newLetterButton.height = 15;
-			newLetterButton.color = "white";
-			newLetterButton.fontSize = 450;
-			newLetterButton.textBlock.text = "a";
-			aT.addControl(newLetterButton);
-			return newLetterButton;
-		}
+        // right side further
+        var palmTrees4 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees4.meshes[0], 0.01, 0.01, 0.01, -50, 0, -45, 0);
 
-		var rightLetterObj = createLetterObject("rightLetterObj", -3, 1, 15);
-		var rightLetterText = createLetterText("rightLetterText", 0.15, rightLetterObj);
-		var advancedTextureRight = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(rightLetterText);
-		var rightLetterButton = createLetterButton("rightLetterButton", advancedTextureRight);
+        var pyramid1Scale = 10.0;
+        var pyramid = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "pyramidReal.glb",
+          scene
+        );
+        scaleAndMove(
+          pyramid.meshes[0],
+          pyramid1Scale,
+          pyramid1Scale,
+          pyramid1Scale,
+          100,
+          0,
+          -50,
+          Math.PI / 2
+        );
 
-		var midLetterObj = createLetterObject("midLetterObj", 0,1,15);
-		var midLetterText = createLetterText("midLetterText", 0, midLetterObj);
-		var advancedTextureMid = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(midLetterText);
-		var midLetterButton = createLetterButton("midLetterButton", advancedTextureMid);
+        var pyramid2Scale = 6.0;
+        var pyramid2 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "pyramidReal.glb",
+          scene
+        );
+        scaleAndMove(
+          pyramid2.meshes[0],
+          pyramid2Scale,
+          pyramid2Scale,
+          pyramid2Scale,
+          120,
+          0,
+          50,
+          0
+        );
 
-		var leftLetterObj = createLetterObject("leftLetterObj", 3, 1, 15);
-		var leftLetterText = createLetterText("leftLetterText", -0.15, leftLetterObj);
-		var advancedTextureLeft = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(leftLetterText);
-		var leftLetterButton = createLetterButton("leftLetterButton", advancedTextureLeft);
+        var palmTreeTall = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTreeTall.glb",
+          scene
+        );
+        scaleAndMove(palmTreeTall.meshes[0], 1.5, 1.5, 1.5, -50, 0, 45, 0);
 
-		var text1 = new BABYLON.GUI.TextBlock();
-		text1.text = "";
-		text1.color = "red";
-        text1.textHorizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
-        text1.fontSize = "120"
-		//text1.top = -200;
-        //imagePlane.position.y = 2.5;
-		//imagePlane.position.z = 3;
-		advancedTexture.addControl(text1);
+        var obelisk = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "obelisk.glb",
+          scene
+        );
+        scaleAndMove(obelisk.meshes[0], 10, 10, 10, 0, -5, 40, 0);
 
-		var canSelect = true;
-		var isLocked = false;
-		var correct = false;
+        var obelisk2 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "obelisk.glb",
+          scene
+        );
+        scaleAndMove(obelisk2.meshes[0], 10, 10, 10, 0, -5, -40, Math.PI / 2);
 
-		function handleSelection(letterButton, letterObj, word){
-			correct = letterButton.textBlock.text == word[letterIndex] 
-			console.log(word, letterIndex, correct);
-			if(correct){
-				letterObj.material = correctMaterial;
-			} else {
-				letterObj.material = wrongMaterial;
-			}
-			canSelect = false;
-			setTimeout(() => {
-				canSelect = true;
-				if(correct){
-					if(letterIndex + 1 < word.length){
-						letterIndex++;
-                        //console.log("Updating index");
-                        text1.text += letterButton.textBlock.text;
-						let letters = genThreeChars(word, letterIndex);
-						leftLetterButton.textBlock.text = letters[0];
-						midLetterButton.textBlock.text = letters[1];
-						rightLetterButton.textBlock.text = letters[2];
-					} else {
-                        console.log("Updating word");
-                        wordIndex++;
-						initWord(words[wordIndex]);
-					}
-				} else {
-                    let letters = genThreeChars(word, letterIndex);
-                    leftLetterButton.textBlock.text = letters[0];
-                    midLetterButton.textBlock.text = letters[1];
-                    rightLetterButton.textBlock.text = letters[2];
-				}
-				correct = false;
-				letterObj.material = defaultMat;
-			}, 500)
-		}
+        var chest = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "chest.glb",
+          scene
+        );
+        scaleAndMove(chest.meshes[0], 1, 1, 1, -50, 1, 26, 0);
 
-		function initWord(word){
-			var wordMaterial = new BABYLON.StandardMaterial("wordMat", scene);
-			wordMaterial.diffuseTexture = new BABYLON.Texture(word.imageURL, scene);
-			wordMaterial.diffuseTexture.uScale = 1;
-			wordMaterial.diffuseTexture.vScale = 1;
-			wordMaterial.backFaceCulling = false;
-			imagePlane.material = wordMaterial;
+        var skybox = BABYLON.MeshBuilder.CreateBox(
+          "skyBox",
+          { size: 1000.0 },
+          scene
+        );
+        var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/textures/skybox",
+          scene
+        );
+        skyboxMaterial.reflectionTexture.coordinatesMode =
+          BABYLON.Texture.SKYBOX_MODE;
+        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        skybox.material = skyboxMaterial;
 
-			let letters = genThreeChars(word.word, 0);
-			leftLetterButton.textBlock.text = letters[0];
-			midLetterButton.textBlock.text = letters[1];
-			rightLetterButton.textBlock.text = letters[2];
+        engine.hideLoadingUI();
 
-			letterIndex = 0;
-            //console.log(word.word);
-			text1.text = ""; //[...word.word].map(x => "_").join("");
-            //console.log(text1.text);
-		}
+        var enteredText = createEnteredText("enteredText", 0, 13.5, 14, 10, 10);
+        var advancedTextureText =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(enteredText);
+        var textButton = createLetterButton(
+          "textButton",
+          advancedTextureText,
+          300,
+          300,
+          200
+        );
 
-		initWord(words[wordIndex]);
+        var canSelect = true;
+        var isLocked = false;
+        var correct = false;
 
-		// Triggers on mouse pointer down
-        if( !is_xr)
-        {
-            var onPointerDown = function (evt, pr) {
-                if (!isLocked) { // Engages pointer lock
-                    canvas.requestPointerLock = canvas.requestPointerLock || canvas.msRequestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock || false;
-                    if (canvas.requestPointerLock) {
-                        canvas.requestPointerLock();
+        function handleSelection(letterButton, letterObj, word) {
+          textButton.textBlock.text = [...textButton.textBlock.text]
+            .map((x, i) => (i == letterIndex ? letterButton.textBlock.text : x))
+            .join("");
+          correct = letterButton.textBlock.text == word[letterIndex];
+          console.log(word, letterIndex, correct, letterButton.textBlock.text);
+          if (letterButton.textBlock.text == word[letterIndex]) {
+            letterButton.color = "green";
+          } else {
+            letterButton.color = "red";
+          }
+          canSelect = false;
+          setTimeout(() => {
+            canSelect = true;
+            if (letterButton.textBlock.text == word[letterIndex]) {
+              if (letterIndex < word.length - 1) {
+                letterIndex++;
+                let letters = genThreeChars(word, letterIndex);
+                leftLetterButton.textBlock.text = letters[0];
+                midLetterButton.textBlock.text = letters[1];
+                rightLetterButton.textBlock.text = letters[2];
+              } else {
+                wordIndex = (wordIndex + 1) % words.length;
+                initWord(words[wordIndex]);
+              }
+            } else {
+              wordIndex = (wordIndex + 1) % words.length;
+              initWord(words[wordIndex]);
+            }
+            letterButton.color = "white";
+          }, 500);
+        }
+
+        function initWord(word) {
+          var wordMaterial = new BABYLON.StandardMaterial("wordMat", scene);
+          wordMaterial.diffuseTexture = new BABYLON.Texture(
+            word.imageURL,
+            scene
+          );
+          wordMaterial.diffuseTexture.uScale = 1;
+          wordMaterial.diffuseTexture.vScale = 1;
+          wordMaterial.backFaceCulling = false;
+          imagePlane.material = wordMaterial;
+
+          let letters = genThreeChars(word.word, 0);
+          leftLetterButton.textBlock.text = letters[0];
+          midLetterButton.textBlock.text = letters[1];
+          rightLetterButton.textBlock.text = letters[2];
+
+          letterIndex = 0;
+          textButton.textBlock.text = [...word.word].map((x) => "_").join("");
+        }
+
+        initWord(words[wordIndex]);
+
+        if (!is_xr) {
+          // Triggers on mouse pointer down
+          var onPointerDown = function (evt, pr) {
+            if (!isLocked) {
+              // Engages pointer lock
+              canvas.requestPointerLock =
+                canvas.requestPointerLock ||
+                canvas.msRequestPointerLock ||
+                canvas.mozRequestPointerLock ||
+                canvas.webkitRequestPointerLock ||
+                false;
+              if (canvas.requestPointerLock) {
+                canvas.requestPointerLock();
+              }
+            }
+            // returns when left mouse button is not pressed
+            if (evt.button !== 0) {
+              return;
+            }
+
+            // Otherwise we cast a ray from the center of the screen
+            var width = scene.getEngine().getRenderWidth();
+            var height = scene.getEngine().getRenderHeight();
+            var pickInfo = scene.pick(width / 2, height / 2);
+
+            // Logic that determines what happens when the sphere is clicked
+            // console.log(pickInfo.pickedMesh.name)
+            if (!canSelect) return;
+            if (
+              (pickInfo.hit &&
+                pickInfo.pickedMesh &&
+                pickInfo.pickedMesh.name == "rightLetterObj") ||
+              pickInfo.pickedMesh.name == "rightLetterText"
+            ) {
+              handleSelection(
+                rightLetterButton,
+                rightLetterObj,
+                words[wordIndex].word
+              );
+            }
+            if (
+              (pickInfo.hit &&
+                pickInfo.pickedMesh &&
+                pickInfo.pickedMesh.name == "midLetterObj") ||
+              pickInfo.pickedMesh.name == "midLetterText"
+            ) {
+              handleSelection(
+                midLetterButton,
+                midLetterObj,
+                words[wordIndex].word
+              );
+            }
+            if (
+              (pickInfo.hit &&
+                pickInfo.pickedMesh &&
+                pickInfo.pickedMesh.name == "leftLetterObj") ||
+              pickInfo.pickedMesh.name == "leftLetterText"
+            ) {
+              handleSelection(
+                leftLetterButton,
+                leftLetterObj,
+                words[wordIndex].word
+              );
+            }
+          };
+        }
+
+        var canvas = engine.getRenderingCanvas();
+        if (!is_xr) {
+          canvas.addEventListener("pointerdown", onPointerDown, false);
+        }
+
+        if (is_xr) {
+          const env = scene.createDefaultEnvironment();
+          const xr = await scene.createDefaultXRExperienceAsync();
+
+          xr.input.onControllerAddedObservable.add((controller) => {
+            controller.onMotionControllerInitObservable.add(
+              (motionController) => {
+                if (motionController.handness === "left") {
+                  const xr_ids = motionController.getComponentIds();
+                  let triggerComponent = motionController.getComponent(
+                    xr_ids[0]
+                  ); //xr-standard-trigger
+                  triggerComponent.onButtonStateChangedObservable.add(() => {
+                    if (triggerComponent.pressed) {
+                      //Box_Left_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                      if (!canSelect) return;
+                      handleSelection(
+                        rightLetterButton,
+                        rightLetterObj,
+                        words[wordIndex].word
+                      );
+                    } else {
+                      //Box_Left_Trigger.scaling= new BABYLON.Vector3(1,1,1);
                     }
+                  });
+                  let xbuttonComponent = motionController.getComponent(
+                    xr_ids[3]
+                  ); //x-button
+                  xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                    if (!canSelect) return;
+                    if (xbuttonComponent.pressed) {
+                      handleSelection(
+                        midLetterButton,
+                        midLetterButton,
+                        words[wordIndex].word
+                      );
+                      //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                    } else {
+                      //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);
+                    }
+                  });
                 }
-                // returns when left mouse button is not pressed
-                if (evt.button !== 0) {
-                    return;
+                if (motionController.handness === "right") {
+                  const xr_ids = motionController.getComponentIds();
+                  let triggerComponent = motionController.getComponent(
+                    xr_ids[0]
+                  ); //xr-standard-trigger
+                  triggerComponent.onButtonStateChangedObservable.add(() => {
+                    if (!canSelect) return;
+                    if (triggerComponent.pressed) {
+                      handleSelection(
+                        leftLetterButton,
+                        leftLetterObj,
+                        words[wordIndex].word
+                      );
+                      //Box_Right_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                    } else {
+                      //Box_Right_Trigger.scaling= new BABYLON.Vector3(1,1,1);
+                    }
+                  });
+                  let xbuttonComponent = motionController.getComponent(
+                    xr_ids[3]
+                  ); //x-button
+                  xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                    if (!canSelect) return;
+                    if (xbuttonComponent.pressed) {
+                      handleSelection(
+                        midLetterButton,
+                        midLetterButton,
+                        words[wordIndex].word
+                      );
+                      //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                    } else {
+                      //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);
+                    }
+                  });
                 }
-
-                // Otherwise we cast a ray from the center of the screen
-                var width = scene.getEngine().getRenderWidth();
-                var height = scene.getEngine().getRenderHeight();
-                var pickInfo = scene.pick(width / 2, height / 2);
-
-                // Logic that determines what happens when the sphere is clicked
-                // console.log(pickInfo.pickedMesh.name)
-                if(!canSelect) return;
-                if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "rightLetterObj" || pickInfo.pickedMesh.name == "rightLetterText") {
-                    handleSelection(rightLetterButton, rightLetterObj, words[wordIndex].word);
-                }
-                if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "midLetterObj" || pickInfo.pickedMesh.name == "midLetterText") {
-                    handleSelection(midLetterButton, midLetterObj, words[wordIndex].word);
-                }
-                if (pickInfo.hit && pickInfo.pickedMesh && pickInfo.pickedMesh.name == "leftLetterObj" || pickInfo.pickedMesh.name == "leftLetterText") {
-                handleSelection(leftLetterButton, leftLetterObj, words[wordIndex].word);
-                }
-            }  
+              }
+            );
+          });
         }
-		
-		var canvas = engine.getRenderingCanvas();
-        if(!is_xr)
+        return scene;
+      };
+
+      //https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+      function shuffle(array) {
+        let currentIndex = array.length,
+          randomIndex;
+        while (currentIndex != 0) {
+          randomIndex = Math.floor(Math.random() * currentIndex);
+          currentIndex--;
+          [array[currentIndex], array[randomIndex]] = [
+            array[randomIndex],
+            array[currentIndex],
+          ];
+        }
+        return array;
+      }
+
+      function genThreeChars(word, letterIndex) {
+        const alphabet = "abcdefghijklmnopqrstuvwxyz";
+        let options = [];
+        options.push(word[letterIndex]);
+        while (options.length < 3) {
+          const ran = alphabet[Math.floor(Math.random() * alphabet.length)];
+          if (!options.includes(ran)) options.push(ran);
+        }
+        return shuffle(options);
+      }
+
+      var wordsList = [
         {
-            canvas.addEventListener("pointerdown", onPointerDown, false);
-        }
-		
-        if( is_xr )
+          word: "air",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/air.jpg",
+          sound: "url",
+        },
         {
-            const env = scene.createDefaultEnvironment();
-            const xr = await scene.createDefaultXRExperienceAsync({
-                floorMeshes: [env.ground]
-            });
+          word: "day",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/day.jpg",
+          sound: "url",
+        },
+        {
+          word: "down",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/down.png",
+          sound: "url",
+        },
+        {
+          word: "find",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/find.png",
+          sound: "url",
+        },
+        {
+          word: "first",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/first.png",
+          sound: "url",
+        },
+        {
+          word: "long",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/long.jpg",
+          sound: "url",
+        },
+        {
+          word: "look",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/look.png",
+          sound: "url",
+        },
+        {
+          word: "make",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/make.png",
+          sound: "url",
+        },
+        {
+          word: "number",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/number.jpg",
+          sound: "url",
+        },
+        {
+          word: "one",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/one.jpg",
+          sound: "url",
+        },
+        {
+          word: "party",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/party.jpg",
+          sound: "url",
+        },
+        {
+          word: "people",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/people.jpg",
+          sound: "url",
+        },
+        {
+          word: "see",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/see.jpg",
+          sound: "url",
+        },
+        {
+          word: "two",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/two.png",
+          sound: "url",
+        },
+        {
+          word: "up",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/up.jpg",
+          sound: "url",
+        },
+        {
+          word: "water",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/water.jpg",
+          sound: "url",
+        },
+        {
+          word: "way",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/way.jpg",
+          sound: "url",
+        },
+        {
+          word: "words",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/words.jpg",
+          sound: "url",
+        },
+        {
+          word: "work",
+          imageURL:
+            "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/work.jpg",
+          sound: "url",
+        },
+      ];
 
-            xr.input.onControllerAddedObservable.add((controller) => {
-        controller.onMotionControllerInitObservable.add((motionController) => {
-            if (motionController.handness === 'left') {
-                    const xr_ids = motionController.getComponentIds();
-                    let triggerComponent = motionController.getComponent(xr_ids[0]);//xr-standard-trigger
-                    triggerComponent.onButtonStateChangedObservable.add(() => {
-                        if (triggerComponent.pressed) {
-                            //Box_Left_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
-                            handleSelection(rightLetterButton, rightLetterObj, words[wordIndex].word);
-                            
-                        }else{
-                            //Box_Left_Trigger.scaling= new BABYLON.Vector3(1,1,1);
-                        
-                        }
-                    });
-                    let xbuttonComponent = motionController.getComponent(xr_ids[3]);//x-button
-                    xbuttonComponent.onButtonStateChangedObservable.add(() => {
-                        if (xbuttonComponent.pressed) {
-                            handleSelection(midLetterButton, midLetterButton, words[wordIndex].word);
-                            //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
-                        
-                        }else{
-                            //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);  
-                        }
-                    });
-            }
-            if (motionController.handness === 'right') {
-                    const xr_ids = motionController.getComponentIds();
-                    let triggerComponent = motionController.getComponent(xr_ids[0]);//xr-standard-trigger
-                    triggerComponent.onButtonStateChangedObservable.add(() => {
-                        if (triggerComponent.pressed) {
-                            handleSelection(leftLetterButton, leftLetterObj, words[wordIndex].word);
-                            //Box_Right_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
-                        
-                        }else{
-                            //Box_Right_Trigger.scaling= new BABYLON.Vector3(1,1,1);
-                        
-                        }
-                    });
-                    let xbuttonComponent = motionController.getComponent(xr_ids[3]);//x-button
-                    xbuttonComponent.onButtonStateChangedObservable.add(() => {
-                        if (xbuttonComponent.pressed) {
-                            handleSelection(midLetterButton, midLetterButton, words[wordIndex].word);
-                            //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
-                        
-                        }else{
-                            //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);  
-                        }
-                    });
-            }
-        })
-            });
-        }
-		
+      window.initFunction = async function () {
+        var asyncEngineCreation = async function () {
+          try {
+            return createDefaultEngine();
+          } catch (e) {
+            console.log(
+              "the available createEngine function failed. Creating the default engine instead"
+            );
+            return createDefaultEngine();
+          }
+        };
 
-		return scene;
-	};
-
-    //https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-	function shuffle(array) {
-	  let currentIndex = array.length,  randomIndex;
-	  while (currentIndex != 0) {
-		randomIndex = Math.floor(Math.random() * currentIndex);
-		currentIndex--;
-		[array[currentIndex], array[randomIndex]] = [
-		  array[randomIndex], array[currentIndex]];
-	  }
-	  return array;
-	}
-
-	function genThreeChars(word, letterIndex){
-		const alphabet = "abcdefghijklmnopqrstuvwxyz"
-		let options = [];
-		options.push(word[letterIndex]);
-		while(options.length < 3){
-			const ran = alphabet[Math.floor(Math.random() * alphabet.length)] 
-			if(!options.includes(ran))
-				options.push(ran)
-		}
-		return shuffle(options);
-	}
-
-	var wordsList = [
-		{word: 'air', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/air.jpg', sound: 'url'},
-		{word: 'day', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/day.jpg', sound: 'url'},
-		{word: 'down', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/down.png', sound: 'url'},
-		{word: 'find', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/find.png', sound: 'url'},
-		{word: 'first', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/first.png', sound: 'url'},
-		{word: 'long', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/long.jpg', sound: 'url'},
-		{word: 'look', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/look.png', sound: 'url'},
-		{word: 'make', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/make.png', sound: 'url'},
-		{word: 'number', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/number.jpg', sound: 'url'},
-		{word: 'one', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/one.jpg', sound: 'url'},
-		{word: 'party', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/party.jpg', sound: 'url'},
-		{word: 'people', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/people.jpg', sound: 'url'},
-		{word: 'see', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/see.jpg', sound: 'url'},
-		{word: 'two', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/two.png', sound: 'url'},
-		{word: 'up', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/up.jpg', sound: 'url'},
-		{word: 'water', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/water.jpg', sound: 'url'},
-		{word: 'way', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/way.jpg', sound: 'url'},
-		{word: 'words', imageURL: 'https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/Images/words.jpg', sound: 'url'}
-		//{word: 'work', imageURL: 'https://github.com/flamma7/daniels_spelling_vr/blob/master/Assets/Images/work.jpg', sound: 'url'}
-	];
-	
-	var engine;
-	try {
-		engine = createDefaultEngine();
-	} catch(e) {
-		console.log("the available createEngine function failed. Creating the default engine instead");
-		engine = createDefaultEngine();
-	}
-        if (!engine) throw 'engine should not be null.';
-        scene = createScene();;
-        sceneToRender = scene
+        window.engine = await asyncEngineCreation();
+        if (!engine) throw "engine should not be null.";
+        window.scene = createScene();
+      };
+      initFunction().then(() => {
+        scene.then((returnedScene) => {
+          sceneToRender = returnedScene;
+        });
 
         engine.runRenderLoop(function () {
-            if (sceneToRender) {
-                sceneToRender.render();
-            }
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
         });
+      });
 
-        // Resize
-        window.addEventListener("resize", function () {
-            engine.resize();
-        });
+      // Resize
+      window.addEventListener("resize", function () {
+        engine.resize();
+      });
     </script>
-</body>
+  </body>
 </html>
