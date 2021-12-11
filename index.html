@@ -113,11 +113,11 @@
       	 */
 
         const imagePlane = BABYLON.MeshBuilder.CreatePlane("imagePlane", {
-          height: 2,
-          width: 2,
+          height: 10,
+          width: 10,
         });
-        imagePlane.position.y = 2.5;
-        imagePlane.position.z = 3;
+        imagePlane.position.y = 8;
+        imagePlane.position.z = 15;
 
         function createLetterObject(newLetterObj, x, y, z) {
           // var newLetterObj = BABYLON.Mesh.CreateSphere(name, 16, 2, scene);
@@ -150,7 +150,7 @@
           newLetterButton.width = 20;
           newLetterButton.height = 15;
           newLetterButton.color = "white";
-          newLetterButton.fontSize = 450;
+          newLetterButton.fontSize = 650;
           newLetterButton.textBlock.text = "a";
           aT.addControl(newLetterButton);
           return newLetterButton;
@@ -167,9 +167,9 @@
         createLetterObject(rightLetterObj, -3, 1.5, 15);
         var rightLetterText = createLetterText(
           "rightLetterText",
-          -2.25,
+          -3.15,
           1.5,
-          10
+          14.5
         );
         var advancedTextureRight =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(rightLetterText);
@@ -186,7 +186,7 @@
         );
         midLetterObj = midLetterObj.meshes[0];
         createLetterObject(midLetterObj, 0, 1.5, 15);
-        var midLetterText = createLetterText("midLetterText", 0, 1.5, 10);
+        var midLetterText = createLetterText("midLetterText", 0, 1.5, 14.5);
         var advancedTextureMid =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(midLetterText);
         var midLetterButton = createLetterButton(
@@ -202,7 +202,12 @@
         );
         leftLetterObj = leftLetterObj.meshes[0];
         createLetterObject(leftLetterObj, 3, 1.5, 15);
-        var leftLetterText = createLetterText("leftLetterText", 2.25, 1.5, 10);
+        var leftLetterText = createLetterText(
+          "leftLetterText",
+          3.15,
+          1.5,
+          14.5
+        );
         var advancedTextureLeft =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(leftLetterText);
         var leftLetterButton = createLetterButton(
