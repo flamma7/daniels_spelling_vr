@@ -56,6 +56,7 @@
       var createScene = async function () {
         // BABYLON.GLTFFileLoader.IncrementalLoading = false;
         // Made by Nadiv
+        var is_xr = false; // is_xr = false when debugging in 2D; is_xr = true for VR
 
         const words = shuffle(wordsList);
         var wordIndex = 0;
@@ -80,11 +81,13 @@
         // crosshair
         const advancedTexture =
           BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-        const cross = new BABYLON.GUI.TextBlock();
-        cross.text = "+";
-        cross.color = "black";
-        cross.fontSize = 32;
-        advancedTexture.addControl(cross);
+        if (!is_xr) {
+          const cross = new BABYLON.GUI.TextBlock();
+          cross.text = "+";
+          cross.color = "black";
+          cross.fontSize = 32;
+          advancedTexture.addControl(cross);
+        }
 
         var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
         materialPlane.diffuseTexture = new BABYLON.Texture(
@@ -281,80 +284,157 @@
 
         initWord(words[wordIndex]);
 
-        // Triggers on mouse pointer down
-        var onPointerDown = function (evt, pr) {
-          if (!isLocked) {
-            // Engages pointer lock
-            canvas.requestPointerLock =
-              canvas.requestPointerLock ||
-              canvas.msRequestPointerLock ||
-              canvas.mozRequestPointerLock ||
-              canvas.webkitRequestPointerLock ||
-              false;
-            if (canvas.requestPointerLock) {
-              canvas.requestPointerLock();
+        if (!is_xr) {
+          // Triggers on mouse pointer down
+          var onPointerDown = function (evt, pr) {
+            if (!isLocked) {
+              // Engages pointer lock
+              canvas.requestPointerLock =
+                canvas.requestPointerLock ||
+                canvas.msRequestPointerLock ||
+                canvas.mozRequestPointerLock ||
+                canvas.webkitRequestPointerLock ||
+                false;
+              if (canvas.requestPointerLock) {
+                canvas.requestPointerLock();
+              }
             }
-          }
-          // returns when left mouse button is not pressed
-          if (evt.button !== 0) {
-            return;
-          }
+            // returns when left mouse button is not pressed
+            if (evt.button !== 0) {
+              return;
+            }
 
-          // Otherwise we cast a ray from the center of the screen
-          var width = scene.getEngine().getRenderWidth();
-          var height = scene.getEngine().getRenderHeight();
-          var pickInfo = scene.pick(width / 2, height / 2);
+            // Otherwise we cast a ray from the center of the screen
+            var width = scene.getEngine().getRenderWidth();
+            var height = scene.getEngine().getRenderHeight();
+            var pickInfo = scene.pick(width / 2, height / 2);
 
-          // Logic that determines what happens when the sphere is clicked
-          // console.log(pickInfo.pickedMesh.name)
-          if (!canSelect) return;
-          if (
-            (pickInfo.hit &&
-              pickInfo.pickedMesh &&
-              pickInfo.pickedMesh.name == "rightLetterObj") ||
-            pickInfo.pickedMesh.name == "rightLetterText"
-          ) {
-            handleSelection(
-              rightLetterButton,
-              rightLetterObj,
-              words[wordIndex].word
-            );
-          }
-          if (
-            (pickInfo.hit &&
-              pickInfo.pickedMesh &&
-              pickInfo.pickedMesh.name == "midLetterObj") ||
-            pickInfo.pickedMesh.name == "midLetterText"
-          ) {
-            handleSelection(
-              midLetterButton,
-              midLetterObj,
-              words[wordIndex].word
-            );
-          }
-          if (
-            (pickInfo.hit &&
-              pickInfo.pickedMesh &&
-              pickInfo.pickedMesh.name == "leftLetterObj") ||
-            pickInfo.pickedMesh.name == "leftLetterText"
-          ) {
-            handleSelection(
-              leftLetterButton,
-              leftLetterObj,
-              words[wordIndex].word
-            );
-          }
-        };
+            // Logic that determines what happens when the sphere is clicked
+            // console.log(pickInfo.pickedMesh.name)
+            if (!canSelect) return;
+            if (
+              (pickInfo.hit &&
+                pickInfo.pickedMesh &&
+                pickInfo.pickedMesh.name == "rightLetterObj") ||
+              pickInfo.pickedMesh.name == "rightLetterText"
+            ) {
+              handleSelection(
+                rightLetterButton,
+                rightLetterObj,
+                words[wordIndex].word
+              );
+            }
+            if (
+              (pickInfo.hit &&
+                pickInfo.pickedMesh &&
+                pickInfo.pickedMesh.name == "midLetterObj") ||
+              pickInfo.pickedMesh.name == "midLetterText"
+            ) {
+              handleSelection(
+                midLetterButton,
+                midLetterObj,
+                words[wordIndex].word
+              );
+            }
+            if (
+              (pickInfo.hit &&
+                pickInfo.pickedMesh &&
+                pickInfo.pickedMesh.name == "leftLetterObj") ||
+              pickInfo.pickedMesh.name == "leftLetterText"
+            ) {
+              handleSelection(
+                leftLetterButton,
+                leftLetterObj,
+                words[wordIndex].word
+              );
+            }
+          };
+        }
 
         var canvas = engine.getRenderingCanvas();
-        canvas.addEventListener("pointerdown", onPointerDown, false);
+        if (!is_xr) {
+          canvas.addEventListener("pointerdown", onPointerDown, false);
+        }
 
-        const env = scene.createDefaultEnvironment();
+        if (is_xr) {
+          const env = scene.createDefaultEnvironment();
+          const xr = await scene.createDefaultXRExperienceAsync({
+            floorMeshes: [env.ground],
+          });
 
-        const xr = await scene.createDefaultXRExperienceAsync({
-          floorMeshes: [env.ground],
-        });
-
+          xr.input.onControllerAddedObservable.add((controller) => {
+            controller.onMotionControllerInitObservable.add(
+              (motionController) => {
+                if (motionController.handness === "left") {
+                  const xr_ids = motionController.getComponentIds();
+                  let triggerComponent = motionController.getComponent(
+                    xr_ids[0]
+                  ); //xr-standard-trigger
+                  triggerComponent.onButtonStateChangedObservable.add(() => {
+                    if (triggerComponent.pressed) {
+                      //Box_Left_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                      handleSelection(
+                        rightLetterButton,
+                        rightLetterObj,
+                        words[wordIndex].word
+                      );
+                    } else {
+                      //Box_Left_Trigger.scaling= new BABYLON.Vector3(1,1,1);
+                    }
+                  });
+                  let xbuttonComponent = motionController.getComponent(
+                    xr_ids[3]
+                  ); //x-button
+                  xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                    if (xbuttonComponent.pressed) {
+                      handleSelection(
+                        midLetterButton,
+                        midLetterButton,
+                        words[wordIndex].word
+                      );
+                      //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                    } else {
+                      //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);
+                    }
+                  });
+                }
+                if (motionController.handness === "right") {
+                  const xr_ids = motionController.getComponentIds();
+                  let triggerComponent = motionController.getComponent(
+                    xr_ids[0]
+                  ); //xr-standard-trigger
+                  triggerComponent.onButtonStateChangedObservable.add(() => {
+                    if (triggerComponent.pressed) {
+                      handleSelection(
+                        leftLetterButton,
+                        leftLetterObj,
+                        words[wordIndex].word
+                      );
+                      //Box_Right_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                    } else {
+                      //Box_Right_Trigger.scaling= new BABYLON.Vector3(1,1,1);
+                    }
+                  });
+                  let xbuttonComponent = motionController.getComponent(
+                    xr_ids[3]
+                  ); //x-button
+                  xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                    if (xbuttonComponent.pressed) {
+                      handleSelection(
+                        midLetterButton,
+                        midLetterButton,
+                        words[wordIndex].word
+                      );
+                      //Sphere_Left_XButton.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                    } else {
+                      //Sphere_Left_XButton.scaling=new BABYLON.Vector3(1,1,1);
+                    }
+                  });
+                }
+              }
+            );
+          });
+        }
         return scene;
       };
 
