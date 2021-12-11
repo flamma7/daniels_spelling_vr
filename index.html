@@ -54,7 +54,7 @@
         });
       };
       var createScene = async function () {
-        var is_xr = false; // is_xr = false when debugging in 2D; is_xr = true for VR
+        var is_xr = true; // is_xr = false when debugging in 2D; is_xr = true for VR
 
         const words = shuffle(wordsList);
         var wordIndex = 0;
@@ -89,28 +89,21 @@
 
         var materialPlane = new BABYLON.StandardMaterial("texturePlane", scene);
         materialPlane.diffuseTexture = new BABYLON.Texture(
-          "https://previews.123rf.com/images/subbotina/subbotina1004/subbotina100400070/7337380-sand-texture.jpg",
+          "https://i.imgur.com/VCair7W.jpg",
           scene
         );
-        materialPlane.diffuseTexture.uScale = 5.0;
-        materialPlane.diffuseTexture.vScale = 5.0;
+        materialPlane.diffuseTexture.uScale = 28.0;
+        materialPlane.diffuseTexture.vScale = 28.0;
 
         var defaultMat = new BABYLON.StandardMaterial("defaultMat", scene);
 
-        var ground = BABYLON.Mesh.CreateGround("ground1", 50, 50, 0, scene);
+        var ground = BABYLON.MeshBuilder.CreateGround(
+          "ground",
+          { width: 400, height: 400 },
+          scene
+        );
+        ground.material = new BABYLON.StandardMaterial("mat", scene);
         ground.material = materialPlane;
-
-        // Skybox
-        /* does not work bc CORS is a bitch
-      	 var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, scene);
-      	 var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
-      	 skyboxMaterial.backFaceCulling = false;
-      	 skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox", scene);
-      	 skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-      	 skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-      	 skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-      	 skybox.material = skyboxMaterial;
-      	 */
 
         const imagePlane = BABYLON.MeshBuilder.CreatePlane("imagePlane", {
           height: 10,
@@ -146,14 +139,24 @@
         }
 
         function createEnteredText(name, x, y, z, height = 2, width = 2) {
-          var newLetterText = BABYLON.MeshBuilder.CreatePlane(name,  {height: height, width: width, updatable: true},);
+          var newLetterText = BABYLON.MeshBuilder.CreatePlane(name, {
+            height: height,
+            width: width,
+            updatable: true,
+          });
           newLetterText.position.x = x;
           newLetterText.position.y = y;
           newLetterText.position.z = z;
           return newLetterText;
         }
 
-        function createLetterButton(name, aT, width = 30, height = 15, fontsize = 650) {
+        function createLetterButton(
+          name,
+          aT,
+          width = 30,
+          height = 15,
+          fontsize = 650
+        ) {
           var newLetterButton = BABYLON.GUI.Button.CreateSimpleButton(name, "");
           newLetterButton.width = width;
           newLetterButton.height = height;
@@ -223,22 +226,161 @@
           "leftLetterButton",
           advancedTextureLeft
         );
+
+        function scaleAndMove(
+          object,
+          scaleX,
+          scaleY,
+          scaleZ,
+          posX,
+          posY,
+          posZ,
+          rotation
+        ) {
+          object.scaling.x = scaleX;
+          object.scaling.y = scaleY;
+          object.scaling.z = scaleZ;
+          object.position.x = posX;
+          object.position.y = posY;
+          object.position.z = posZ;
+          object.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            rotation,
+            BABYLON.Space.LOCAL
+          );
+        }
+
+        //left side closer
+        var palmTrees = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees.meshes[0], 0.01, 0.01, 0.01, -65, 0, 45, 0);
+
+        // left side further
+        var palmTrees2 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees2.meshes[0], 0.01, 0.01, 0.01, -40, 0, 45, 0);
+
+        //right side closer
+        var palmTrees3 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees3.meshes[0], 0.01, 0.01, 0.01, -65, 0, -45, 0);
+
+        // right side further
+        var palmTrees4 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTrees.glb",
+          scene
+        );
+        scaleAndMove(palmTrees4.meshes[0], 0.01, 0.01, 0.01, -50, 0, -45, 0);
+
+        var pyramid1Scale = 10.0;
+        var pyramid = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "pyramidReal.glb",
+          scene
+        );
+        scaleAndMove(
+          pyramid.meshes[0],
+          pyramid1Scale,
+          pyramid1Scale,
+          pyramid1Scale,
+          100,
+          0,
+          -50,
+          Math.PI / 2
+        );
+
+        var pyramid2Scale = 6.0;
+        var pyramid2 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "pyramidReal.glb",
+          scene
+        );
+        scaleAndMove(
+          pyramid2.meshes[0],
+          pyramid2Scale,
+          pyramid2Scale,
+          pyramid2Scale,
+          120,
+          0,
+          50,
+          0
+        );
+
+        var palmTreeTall = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "palmTreeTall.glb",
+          scene
+        );
+        scaleAndMove(palmTreeTall.meshes[0], 1.5, 1.5, 1.5, -50, 0, 45, 0);
+
+        var obelisk = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "obelisk.glb",
+          scene
+        );
+        scaleAndMove(obelisk.meshes[0], 10, 10, 10, 0, -5, 40, 0);
+
+        var obelisk2 = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "obelisk.glb",
+          scene
+        );
+        scaleAndMove(obelisk2.meshes[0], 10, 10, 10, 0, -5, -40, Math.PI / 2);
+
+        var chest = await BABYLON.SceneLoader.ImportMeshAsync(
+          "",
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/",
+          "chest.glb",
+          scene
+        );
+        scaleAndMove(chest.meshes[0], 1, 1, 1, -50, 1, 26, 0);
+
+        var skybox = BABYLON.MeshBuilder.CreateBox(
+          "skyBox",
+          { size: 1000.0 },
+          scene
+        );
+        var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(
+          "https://raw.githubusercontent.com/flamma7/daniels_spelling_vr/master/Assets/textures/skybox",
+          scene
+        );
+        skyboxMaterial.reflectionTexture.coordinatesMode =
+          BABYLON.Texture.SKYBOX_MODE;
+        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        skybox.material = skyboxMaterial;
+
         engine.hideLoadingUI();
 
-        var enteredText = createEnteredText(
-          "enteredText",
-          0,
-          13.5,
-          14,
-          10,
-          10,
-        );
+        var enteredText = createEnteredText("enteredText", 0, 13.5, 14, 10, 10);
         var advancedTextureText =
           BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(enteredText);
         var textButton = createLetterButton(
           "textButton",
           advancedTextureText,
-          300,300,
+          300,
+          300,
           200
         );
 
