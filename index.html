@@ -54,7 +54,7 @@
         });
       };
       var createScene = async function () {
-        var is_xr = true; // is_xr = false when debugging in 2D; is_xr = true for VR
+        var is_xr = false; // is_xr = false when debugging in 2D; is_xr = true for VR
 
         const words = shuffle(wordsList);
         var wordIndex = 0;
@@ -145,13 +145,22 @@
           return newLetterText;
         }
 
-        function createLetterButton(name, aT) {
+        function createEnteredText(name, x, y, z, height = 2, width = 2) {
+          var newLetterText = BABYLON.MeshBuilder.CreatePlane(name,  {height: height, width: width, updatable: true},);
+          newLetterText.position.x = x;
+          newLetterText.position.y = y;
+          newLetterText.position.z = z;
+          return newLetterText;
+        }
+
+        function createLetterButton(name, aT, width = 30, height = 15, fontsize = 650) {
           var newLetterButton = BABYLON.GUI.Button.CreateSimpleButton(name, "");
-          newLetterButton.width = 20;
-          newLetterButton.height = 15;
+          newLetterButton.width = width;
+          newLetterButton.height = height;
           newLetterButton.color = "white";
-          newLetterButton.fontSize = 650;
+          newLetterButton.fontSize = fontsize;
           newLetterButton.textBlock.text = "a";
+          newLetterButton.textBlock.resizeToFit = true;
           aT.addControl(newLetterButton);
           return newLetterButton;
         }
@@ -216,18 +225,29 @@
         );
         engine.hideLoadingUI();
 
-        var text1 = new BABYLON.GUI.TextBlock();
-        text1.text = "";
-        text1.color = "white";
-        text1.top = -200;
-        advancedTexture.addControl(text1);
+        var enteredText = createEnteredText(
+          "enteredText",
+          0,
+          13.5,
+          14,
+          10,
+          10,
+        );
+        var advancedTextureText =
+          BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(enteredText);
+        var textButton = createLetterButton(
+          "textButton",
+          advancedTextureText,
+          300,300,
+          200
+        );
 
         var canSelect = true;
         var isLocked = false;
         var correct = false;
 
         function handleSelection(letterButton, letterObj, word) {
-          text1.text = [...text1.text]
+          textButton.textBlock.text = [...textButton.textBlock.text]
             .map((x, i) => (i == letterIndex ? letterButton.textBlock.text : x))
             .join("");
           correct = letterButton.textBlock.text == word[letterIndex];
@@ -276,7 +296,7 @@
           rightLetterButton.textBlock.text = letters[2];
 
           letterIndex = 0;
-          text1.text = [...word.word].map((x) => "_").join("");
+          textButton.textBlock.text = [...word.word].map((x) => "_").join("");
         }
 
         initWord(words[wordIndex]);
