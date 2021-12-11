@@ -42,7 +42,9 @@
     <canvas id="renderCanvas"></canvas>
     <script>
       var canvas = document.getElementById("renderCanvas");
-
+      const is_xr = window.confirm(
+        "Play in VR?\n\nOK: use headset and controller buttons to select letter\n\nCancel: use mouse to click on blocks"
+      ); // is_xr = false when debugging in 2D; is_xr = true for VR
       var engine = null;
       var scene = null;
       var sceneToRender = null;
@@ -54,8 +56,6 @@
         });
       };
       var createScene = async function () {
-        var is_xr = true; // is_xr = false when debugging in 2D; is_xr = true for VR
-
         const words = shuffle(wordsList);
         var wordIndex = 0;
         var letterIndex = 0;
