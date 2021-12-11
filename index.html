@@ -222,10 +222,12 @@
         var correct = false;
 
         function handleSelection(letterButton, letterObj, word) {
-          text1.text[letterIndex] = letterButton.textBlock.text;
+          text1.text = [...text1.text]
+            .map((x, i) => (i == letterIndex ? letterButton.textBlock.text : x))
+            .join("");
           correct = letterButton.textBlock.text == word[letterIndex];
-          console.log(word, letterIndex, correct);
-          if (correct) {
+          console.log(word, letterIndex, correct, letterButton.textBlock.text);
+          if (letterButton.textBlock.text == word[letterIndex]) {
             letterButton.color = "green";
           } else {
             letterButton.color = "red";
@@ -233,26 +235,21 @@
           canSelect = false;
           setTimeout(() => {
             canSelect = true;
-            if (correct) {
-              if (letterIndex < word.length) {
+            if (letterButton.textBlock.text == word[letterIndex]) {
+              if (letterIndex < word.length - 1) {
                 letterIndex++;
-                let letters = genThreeChars(word.word, letterIndex);
+                let letters = genThreeChars(word, letterIndex);
                 leftLetterButton.textBlock.text = letters[0];
                 midLetterButton.textBlock.text = letters[1];
                 rightLetterButton.textBlock.text = letters[2];
               } else {
-                if (wordIndex < words.length) {
-                  wordIndex++;
-                  initWord(words[wordIndex]);
-                }
-              }
-            } else {
-              if (wordIndex < words.length) {
-                wordIndex++;
+                wordIndex = (wordIndex + 1) % words.length;
                 initWord(words[wordIndex]);
               }
+            } else {
+              wordIndex = (wordIndex + 1) % words.length;
+              initWord(words[wordIndex]);
             }
-            correct = false;
             letterButton.color = "white";
           }, 500);
         }
@@ -374,7 +371,7 @@
       function genThreeChars(word, letterIndex) {
         const alphabet = "abcdefghijklmnopqrstuvwxyz";
         let options = [];
-        options.push(word[0]);
+        options.push(word[letterIndex]);
         while (options.length < 3) {
           const ran = alphabet[Math.floor(Math.random() * alphabet.length)];
           if (!options.includes(ran)) options.push(ran);
