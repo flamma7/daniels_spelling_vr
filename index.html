@@ -54,9 +54,7 @@
         });
       };
       var createScene = async function () {
-        // BABYLON.GLTFFileLoader.IncrementalLoading = false;
-        // Made by Nadiv
-        var is_xr = false; // is_xr = false when debugging in 2D; is_xr = true for VR
+        var is_xr = true; // is_xr = false when debugging in 2D; is_xr = true for VR
 
         const words = shuffle(wordsList);
         var wordIndex = 0;
@@ -96,11 +94,10 @@
         );
         materialPlane.diffuseTexture.uScale = 5.0;
         materialPlane.diffuseTexture.vScale = 5.0;
-        materialPlane.backFaceCulling = false;
 
         var defaultMat = new BABYLON.StandardMaterial("defaultMat", scene);
 
-        var ground = BABYLON.Mesh.CreateGround("ground1", 50, 50, 10, scene);
+        var ground = BABYLON.Mesh.CreateGround("ground1", 50, 50, 0, scene);
         ground.material = materialPlane;
 
         // Skybox
@@ -358,9 +355,7 @@
 
         if (is_xr) {
           const env = scene.createDefaultEnvironment();
-          const xr = await scene.createDefaultXRExperienceAsync({
-            floorMeshes: [env.ground],
-          });
+          const xr = await scene.createDefaultXRExperienceAsync();
 
           xr.input.onControllerAddedObservable.add((controller) => {
             controller.onMotionControllerInitObservable.add(
@@ -373,6 +368,7 @@
                   triggerComponent.onButtonStateChangedObservable.add(() => {
                     if (triggerComponent.pressed) {
                       //Box_Left_Trigger.scaling= new BABYLON.Vector3(1.2,1.2,1.2);
+                      if (!canSelect) return;
                       handleSelection(
                         rightLetterButton,
                         rightLetterObj,
@@ -386,6 +382,7 @@
                     xr_ids[3]
                   ); //x-button
                   xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                    if (!canSelect) return;
                     if (xbuttonComponent.pressed) {
                       handleSelection(
                         midLetterButton,
@@ -404,6 +401,7 @@
                     xr_ids[0]
                   ); //xr-standard-trigger
                   triggerComponent.onButtonStateChangedObservable.add(() => {
+                    if (!canSelect) return;
                     if (triggerComponent.pressed) {
                       handleSelection(
                         leftLetterButton,
@@ -419,6 +417,7 @@
                     xr_ids[3]
                   ); //x-button
                   xbuttonComponent.onButtonStateChangedObservable.add(() => {
+                    if (!canSelect) return;
                     if (xbuttonComponent.pressed) {
                       handleSelection(
                         midLetterButton,
